@@ -3,14 +3,21 @@
     "name": "My Daily Growth",
     "slug": "mobile",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "my-daily-growth",
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": false
     },
-    "android": {},
+    "android": {
+      "package": "com.mydailygrowth.app",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#F4F1E8"
+      }
+    },
     "web": {
       "favicon": "./assets/images/icon.png"
     },
