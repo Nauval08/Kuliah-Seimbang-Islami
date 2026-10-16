@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useColors } from '@/hooks/useColors';
+import { isTrackableActivity } from '@/lib/growth';
 import type { Activity, DayIndex } from '@/lib/growth';
 
 const ICON_BY_CATEGORY: Record<Activity['category'], React.ComponentProps<typeof Feather>['name']> = {
@@ -28,11 +29,15 @@ export function ScheduleList({
   day,
   now,
   onEdit,
+  completedActivityIds = [],
+  onToggleComplete,
 }: {
   activities: Activity[];
   day: DayIndex;
   now?: Date;
   onEdit?: (activity: Activity) => void;
+  completedActivityIds?: string[];
+  onToggleComplete?: (activity: Activity) => void;
 }) {
   const colors = useColors();
   if (!activities.length) {
@@ -53,24 +58,21 @@ export function ScheduleList({
     <View style={{ gap: 9 }}>
       {activities.map((activity) => {
         const active = now ? isCurrentActivity(activity, now) : false;
+        const completed = completedActivityIds.includes(activity.id);
         const startLabel = activity.startAnchor
           ? activity.startAnchor === 'maghrib'
             ? 'Magrib'
             : 'Subuh'
           : activity.startTime;
-        const row = (
+        const content = (
           <View
             style={{
-              minHeight: 64,
+              flex: 1,
+              minHeight: 62,
               flexDirection: 'row',
               alignItems: 'center',
               gap: 12,
               borderRadius: 15,
-              paddingHorizontal: 12,
-              paddingVertical: 10,
-              backgroundColor: active ? colors.secondary : colors.background,
-              borderWidth: active ? 1 : 0,
-              borderColor: colors.primary,
             }}
           >
             <View
@@ -97,6 +99,7 @@ export function ScheduleList({
                   fontSize: 13,
                   lineHeight: 18,
                   fontFamily: 'Inter_600SemiBold',
+                  textDecorationLine: completed ? 'line-through' : 'none',
                 }}
               >
                 {activity.title}
@@ -118,18 +121,65 @@ export function ScheduleList({
           </View>
         );
 
-        return onEdit ? (
-          <Pressable
+        return (
+          <View
             key={`${day}-${activity.id}`}
-            accessibilityRole="button"
-            accessibilityLabel={`Ubah ${activity.title}`}
-            onPress={() => onEdit(activity)}
-            style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}
+            style={{
+              minHeight: 64,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              borderRadius: 15,
+              paddingHorizontal: 12,
+              paddingVertical: 4,
+              backgroundColor: completed
+                ? colors.secondary
+                : active
+                  ? colors.secondary
+                  : colors.background,
+              borderWidth: active ? 1 : 0,
+              borderColor: colors.primary,
+            }}
           >
-            {row}
-          </Pressable>
-        ) : (
-          <View key={`${day}-${activity.id}`}>{row}</View>
+            {onEdit ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Ubah ${activity.title}`}
+                onPress={() => onEdit(activity)}
+                style={({ pressed }) => ({
+                  flex: 1,
+                  opacity: pressed ? 0.75 : 1,
+                })}
+              >
+                {content}
+              </Pressable>
+            ) : (
+              <View style={{ flex: 1 }}>{content}</View>
+            )}
+            {onToggleComplete && isTrackableActivity(activity) ? (
+              <Pressable
+                accessibilityRole="checkbox"
+                accessibilityLabel={`${completed ? 'Batalkan penyelesaian' : 'Tandai selesai'}: ${activity.title}`}
+                accessibilityState={{ checked: completed }}
+                testID={`complete-activity-${day}-${activity.id}`}
+                onPress={() => onToggleComplete(activity)}
+                hitSlop={8}
+                style={({ pressed }) => ({
+                  minWidth: 42,
+                  minHeight: 42,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  opacity: pressed ? 0.65 : 1,
+                })}
+              >
+                <Feather
+                  name={completed ? 'check-circle' : 'circle'}
+                  size={21}
+                  color={completed ? colors.primary : colors.mutedForeground}
+                />
+              </Pressable>
+            ) : null}
+          </View>
         );
       })}
     </View>

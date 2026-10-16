@@ -37,6 +37,7 @@ interface GrowthContextValue {
   isReady: boolean;
   saveError: string | null;
   updateActivity: (day: DayIndex, activity: Activity) => void;
+  toggleActivityCompletion: (dateKey: string, activityId: string) => void;
   addActivity: (day: DayIndex) => Activity;
   deleteActivity: (day: DayIndex, id: string) => void;
   toggleClassDay: (day: DayIndex) => void;
@@ -70,11 +71,24 @@ function normalizeStoredData(value: unknown): GrowthData {
     const savedDay = incomingSchedules[String(day)];
     if (Array.isArray(savedDay)) schedules[String(day)] = savedDay;
   }
+  const savedCompletions =
+    incoming.activityCompletions &&
+    typeof incoming.activityCompletions === 'object'
+      ? incoming.activityCompletions
+      : {};
+  const activityCompletions = Object.fromEntries(
+    Object.entries(savedCompletions).flatMap(([dateKey, ids]) =>
+      Array.isArray(ids)
+        ? [[dateKey, ids.filter((id): id is string => typeof id === 'string')]]
+        : [],
+    ),
+  );
 
   return {
     ...defaults,
     ...incoming,
     schedules,
+    activityCompletions,
     classDays: Array.isArray(incoming.classDays)
       ? incoming.classDays
       : defaults.classDays,
@@ -244,6 +258,29 @@ export function GrowthProvider({ children }: React.PropsWithChildren) {
           };
         }
         return { ...current, schedules };
+      });
+    },
+    [replaceData],
+  );
+
+  const toggleActivityCompletion = useCallback(
+    (dateKey: string, activityId: string) => {
+      replaceData((current) => {
+        const completions = new Set(
+          current.activityCompletions[dateKey] ?? [],
+        );
+        if (completions.has(activityId)) {
+          completions.delete(activityId);
+        } else {
+          completions.add(activityId);
+        }
+        const activityCompletions = { ...current.activityCompletions };
+        if (completions.size) {
+          activityCompletions[dateKey] = [...completions];
+        } else {
+          delete activityCompletions[dateKey];
+        }
+        return { ...current, activityCompletions };
       });
     },
     [replaceData],
@@ -566,6 +603,7 @@ export function GrowthProvider({ children }: React.PropsWithChildren) {
       isReady,
       saveError,
       updateActivity,
+      toggleActivityCompletion,
       addActivity,
       deleteActivity,
       toggleClassDay,
@@ -587,6 +625,7 @@ export function GrowthProvider({ children }: React.PropsWithChildren) {
       isReady,
       saveError,
       updateActivity,
+      toggleActivityCompletion,
       addActivity,
       deleteActivity,
       toggleClassDay,

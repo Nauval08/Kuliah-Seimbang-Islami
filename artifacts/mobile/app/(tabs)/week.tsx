@@ -15,6 +15,7 @@ import { useColors } from '@/hooks/useColors';
 import {
   DAY_NAMES,
   DAY_SHORT_NAMES,
+  getActivityProgress,
   getActivitiesForDate,
   getDateKey,
   isLectureDay,
@@ -39,6 +40,7 @@ export default function WeekScreen() {
   const {
     data,
     updateActivity,
+    toggleActivityCompletion,
     addActivity,
     deleteActivity,
   } = useGrowth();
@@ -50,6 +52,21 @@ export default function WeekScreen() {
   const day = selectedDate.getDay() as DayIndex;
   const classDay = isLectureDay(day, data.classDays);
   const activities = getActivitiesForDate(data, selectedDate);
+  const selectedProgress = getActivityProgress(data, selectedDate);
+  const weeklyProgress = useMemo(
+    () =>
+      week.reduce(
+        (total, date) => {
+          const progress = getActivityProgress(data, date);
+          return {
+            completed: total.completed + progress.completed,
+            total: total.total + progress.total,
+          };
+        },
+        { completed: 0, total: 0 },
+      ),
+    [data, week],
+  );
   const [editing, setEditing] = useState<{
     activity: Activity;
     isNew: boolean;
@@ -225,6 +242,51 @@ export default function WeekScreen() {
         </View>
       </Panel>
 
+      <Panel>
+        <SectionTitle
+          title="Rekap pekan ini"
+          detail="Lihat konsistensi kegiatan tanpa target beruntun atau penalti saat istirahat."
+        />
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+          }}
+        >
+          <Text style={{ color: colors.mutedForeground, fontSize: 12, fontFamily: 'Inter_400Regular' }}>
+            Kegiatan terlaksana
+          </Text>
+          <Text style={{ color: colors.primary, fontSize: 17, fontFamily: 'Inter_700Bold' }}>
+            {weeklyProgress.completed}/{weeklyProgress.total}
+          </Text>
+        </View>
+        <View
+          accessibilityRole="progressbar"
+          accessibilityLabel="Kemajuan kegiatan pekan ini"
+          accessibilityValue={{
+            min: 0,
+            max: weeklyProgress.total,
+            now: weeklyProgress.completed,
+          }}
+          style={{
+            height: 7,
+            borderRadius: 99,
+            overflow: 'hidden',
+            backgroundColor: colors.secondary,
+          }}
+        >
+          <View
+            style={{
+              width: `${weeklyProgress.total ? (weeklyProgress.completed / weeklyProgress.total) * 100 : 0}%`,
+              height: '100%',
+              backgroundColor: colors.primary,
+            }}
+          />
+        </View>
+      </Panel>
+
       <Panel
         style={{
           backgroundColor: classDay ? colors.secondary : colors.card,
@@ -254,10 +316,23 @@ export default function WeekScreen() {
                 ? `Hari belajar mandiri · target ${data.studyTargetMinutes / 60} jam efektif.`
                 : 'Hari tanpa target belajar mandiri. Atur hari target di Pengaturan.'}
           </Text>
+          <Text
+            style={{
+              color: colors.primary,
+              fontSize: 12,
+              fontFamily: 'Inter_600SemiBold',
+            }}
+          >
+            Kegiatan terlaksana · {selectedProgress.completed}/{selectedProgress.total}
+          </Text>
         </View>
         <ScheduleList
           activities={activities}
           day={day}
+          completedActivityIds={data.activityCompletions[selectedKey] ?? []}
+          onToggleComplete={(activity) =>
+            toggleActivityCompletion(selectedKey, activity.id)
+          }
           now={
             selectedKey === todayKey
               ? new Date()

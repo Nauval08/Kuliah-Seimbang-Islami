@@ -16,6 +16,7 @@ import { useGrowth } from '@/context/GrowthContext';
 import { useColors } from '@/hooks/useColors';
 import {
   DAY_NAMES,
+  getActivityProgress,
   getActivitiesForDate,
   getDateKey,
   isLectureDay,
@@ -61,6 +62,7 @@ export default function TodayScreen() {
     saveError,
     toggleDateRecovery,
     updateActivity,
+    toggleActivityCompletion,
     addActivity,
     deleteActivity,
   } = useGrowth();
@@ -81,6 +83,7 @@ export default function TodayScreen() {
   const isClassDay = isLectureDay(day, data.classDays);
   const isRecovery = data.recoveryDates.includes(dateKey);
   const studyDay = data.studyDays.includes(day) && !isClassDay;
+  const activityProgress = getActivityProgress(data, now);
   const todaysActivities = useMemo(
     () => getActivitiesForDate(data, now),
     [data, now],
@@ -222,6 +225,61 @@ export default function TodayScreen() {
         ) : null}
       </Panel>
 
+      <Panel>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+          }}
+        >
+          <View style={{ flex: 1, gap: 4 }}>
+            <SectionTitle
+              title="Kemajuan hari ini"
+              detail="Centang kegiatan setelah selesai. Waktu istirahat dan tidur tidak dihitung."
+            />
+          </View>
+          <Text
+            style={{
+              color: colors.primary,
+              fontSize: 17,
+              fontFamily: 'Inter_700Bold',
+            }}
+          >
+            {activityProgress.completed}/{activityProgress.total}
+          </Text>
+        </View>
+        <View
+          accessibilityRole="progressbar"
+          accessibilityLabel="Kemajuan kegiatan hari ini"
+          accessibilityValue={{
+            min: 0,
+            max: activityProgress.total,
+            now: activityProgress.completed,
+          }}
+          style={{
+            height: 7,
+            borderRadius: 99,
+            overflow: 'hidden',
+            backgroundColor: colors.secondary,
+          }}
+        >
+          <View
+            style={{
+              width: `${activityProgress.total ? (activityProgress.completed / activityProgress.total) * 100 : 0}%`,
+              height: '100%',
+              backgroundColor: colors.primary,
+            }}
+          />
+        </View>
+        {activityProgress.total === 0 ? (
+          <Text style={{ color: colors.mutedForeground, fontSize: 12, fontFamily: 'Inter_400Regular' }}>
+            Belum ada kegiatan yang bisa ditandai hari ini.
+          </Text>
+        ) : null}
+      </Panel>
+
       {saveError ? (
         <Panel>
           <Text
@@ -280,6 +338,10 @@ export default function TodayScreen() {
           activities={todaysActivities}
           day={day}
           now={now}
+          completedActivityIds={data.activityCompletions[dateKey] ?? []}
+          onToggleComplete={(activity) =>
+            toggleActivityCompletion(dateKey, activity.id)
+          }
           onEdit={(activity) => setEditing({ day, activity, isNew: false })}
         />
         <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>

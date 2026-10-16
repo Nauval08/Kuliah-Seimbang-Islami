@@ -65,6 +65,7 @@ export interface ActiveStudySession {
 
 export interface GrowthData {
   schedules: Record<string, Activity[]>;
+  activityCompletions: Record<string, string[]>;
   classDays: DayIndex[];
   studyTargetMinutes: number;
   studyDays: DayIndex[];
@@ -271,6 +272,7 @@ export function createDefaultGrowthData(): GrowthData {
 
   return {
     schedules,
+    activityCompletions: {},
     classDays,
     studyTargetMinutes: 240,
     studyDays,
@@ -327,4 +329,23 @@ export function getActivitiesForDate(
       const rightTime = right.startAnchor ? right.startTime : right.startTime;
       return timeToMinutes(leftTime) - timeToMinutes(rightTime);
     });
+}
+
+export function isTrackableActivity(activity: Activity): boolean {
+  return activity.category !== 'rest';
+}
+
+export function getActivityProgress(
+  data: GrowthData,
+  date: Date,
+): { completed: number; total: number } {
+  const dateKey = getDateKey(date);
+  const activities = getActivitiesForDate(data, date).filter(
+    isTrackableActivity,
+  );
+  const completed = new Set(data.activityCompletions[dateKey] ?? []);
+  return {
+    completed: activities.filter((activity) => completed.has(activity.id)).length,
+    total: activities.length,
+  };
 }
